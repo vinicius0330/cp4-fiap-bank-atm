@@ -1,6 +1,6 @@
 package com.fiap.bank.atm;
 
-import com.fiap.bank.atm.application.service.AtmService;
+import com.fiap.bank.atm.application.AtmService;
 import com.fiap.bank.atm.domain.repository.AccountRepository;
 import com.fiap.bank.atm.infrastructure.persistence.InMemoryAccountRepository;
 import com.fiap.bank.atm.presentation.AtmFrame;
