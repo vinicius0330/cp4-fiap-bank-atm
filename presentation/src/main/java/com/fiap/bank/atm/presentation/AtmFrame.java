@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.IntStream;
 
 public class AtmFrame extends javax.swing.JFrame {
 
@@ -554,25 +555,27 @@ public class AtmFrame extends javax.swing.JFrame {
 
         sb.append("----------------------------------------\n");
 
-        int count = 0;
-
-        for (int i = transactions.size() - 1;
-             i >= 0 && count < 5;
-             i--) {
-
-            TransactionDTO transaction = transactions.get(i);
-
-            sb.append(String.format(
-                    "%-12s %-14s %12s%n",
-                    transaction.timestamp().format(
-                            DateTimeFormatter.ofPattern("dd/MM HH:mm")
-                    ),
-                    transaction.type(),
-                    formatMoney(transaction.amount())
-            ));
-
-            count++;
-        }
+        IntStream.range(
+                        0,
+                        Math.min(5, transactions.size())
+                )
+                .mapToObj(index ->
+                        transactions.get(
+                                transactions.size() - 1 - index
+                        )
+                )
+                .forEach(transaction ->
+                        sb.append(String.format(
+                                "%-12s %-14s %12s%n",
+                                transaction.timestamp().format(
+                                        DateTimeFormatter.ofPattern(
+                                                "dd/MM HH:mm"
+                                        )
+                                ),
+                                transaction.type(),
+                                formatMoney(transaction.amount())
+                        ))
+                );
 
         sb.append("----------------------------------------\n");
         sb.append("SALDO ATUAL: ")
@@ -680,11 +683,13 @@ public class AtmFrame extends javax.swing.JFrame {
                 lblScreenHeader.setText("--- ATM FIAP BANK ---");
                 lblScreenStatus.setText("INSIRA A SENHA DE 4 DÍGITOS");
 
-                StringBuilder stars = new StringBuilder();
-                for (int i = 0; i < inputBuffer.length(); i++) {
-                    stars.append("*");
-                }
-                lblScreenInput.setText(stars.length() > 0 ? stars.toString() : "[SENHA]");
+                String stars = "*".repeat(inputBuffer.length());
+
+                lblScreenInput.setText(
+                        stars.isEmpty()
+                                ? "[SENHA]"
+                                : stars
+                );
                 lblScreenMessage.setText("Acesso de Segurança. Pressione 'Confirmar' ao finalizar.");
                 btnBlank.setText("Confirmar");
                 break;
