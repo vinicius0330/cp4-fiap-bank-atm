@@ -1,2 +1,7 @@
 target/
 .idea/
+# Banco SQLite local
+*.db
+*.db-journal
+*.db-shm
+*.db-wal

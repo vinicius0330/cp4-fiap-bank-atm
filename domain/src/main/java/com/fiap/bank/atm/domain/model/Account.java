@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class Account extends BaseEntity {
+
     private static final int MAX_FAILED_ATTEMPTS = 3;
 
     private final String accountNumber;
@@ -19,20 +20,88 @@ public class Account extends BaseEntity {
     private int failedAttempts;
     private final List<Transaction> transactions;
 
-    public Account(UUID id, String accountNumber, String pin, Money initialBalance, Money dailyWithdrawalLimit) {
+    public Account(
+            UUID id,
+            String accountNumber,
+            String pin,
+            Money initialBalance,
+            Money dailyWithdrawalLimit
+    ) {
         super(id);
-        this.accountNumber = Objects.requireNonNull(accountNumber, "Account number cannot be null");
-        this.pin = Objects.requireNonNull(pin, "PIN cannot be null");
-        this.balance = Objects.requireNonNull(initialBalance, "Initial balance cannot be null");
-        this.dailyWithdrawalLimit = Objects.requireNonNull(dailyWithdrawalLimit, "Daily limit cannot be null");
+
+        this.accountNumber = Objects.requireNonNull(
+                accountNumber,
+                "Account number cannot be null"
+        );
+        this.pin = Objects.requireNonNull(
+                pin,
+                "PIN cannot be null"
+        );
+        this.balance = Objects.requireNonNull(
+                initialBalance,
+                "Initial balance cannot be null"
+        );
+        this.dailyWithdrawalLimit = Objects.requireNonNull(
+                dailyWithdrawalLimit,
+                "Daily limit cannot be null"
+        );
+
         this.totalWithdrawnToday = Money.ZERO;
         this.blocked = false;
         this.failedAttempts = 0;
         this.transactions = new ArrayList<>();
     }
 
+    public Account(
+            UUID id,
+            String accountNumber,
+            String pin,
+            Money balance,
+            Money dailyWithdrawalLimit,
+            Money totalWithdrawnToday,
+            boolean blocked,
+            int failedAttempts,
+            List<Transaction> transactions
+    ) {
+        super(id);
+
+        this.accountNumber = Objects.requireNonNull(
+                accountNumber,
+                "Account number cannot be null"
+        );
+        this.pin = Objects.requireNonNull(
+                pin,
+                "PIN cannot be null"
+        );
+        this.balance = Objects.requireNonNull(
+                balance,
+                "Balance cannot be null"
+        );
+        this.dailyWithdrawalLimit = Objects.requireNonNull(
+                dailyWithdrawalLimit,
+                "Daily limit cannot be null"
+        );
+        this.totalWithdrawnToday = Objects.requireNonNull(
+                totalWithdrawnToday,
+                "Total withdrawn today cannot be null"
+        );
+
+        this.blocked = blocked;
+        this.failedAttempts = failedAttempts;
+        this.transactions = new ArrayList<>(
+                Objects.requireNonNull(
+                        transactions,
+                        "Transactions cannot be null"
+                )
+        );
+    }
+
     public String getAccountNumber() {
         return accountNumber;
+    }
+
+    public String getPin() {
+        return pin;
     }
 
     public Money getBalance() {
