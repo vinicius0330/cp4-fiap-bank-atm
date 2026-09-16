@@ -1,5 +1,7 @@
 # FIAP Bank - Emulador de Caixa Eletrônico (ATM)
 
+# Vinicius Cavalcanti dos Reis / RM - 562063
+
 ![Java 21](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=java)
 ![Maven](https://img.shields.io/badge/Maven-3.x-blue?style=for-the-badge&logo=apache-maven)
 ![FlatLaf](https://img.shields.io/badge/UI-FlatLaf_Dark-darkgreen?style=for-the-badge)
@@ -50,6 +52,10 @@ A aplicação foi projetada com arquitetura limpa em camadas baseada em **DDD (D
 - **💡 Indicadores de Periféricos & LED Animated States**:
   - LED indicador de leitor de cartão piscando no estado de boas-vindas.
   - Slots de dispensador de dinheiro e impressora com feedback de cor e estado.
+- 💾 Persistência Relacional:
+  - Armazenamento de contas e transações em SQLite.
+  - Preservação dos dados depois que a aplicação é encerrada.
+  - Criação automática das tabelas e da carga inicial.
 
 ---
 
@@ -57,35 +63,52 @@ A aplicação foi projetada com arquitetura limpa em camadas baseada em **DDD (D
 
 A aplicação segue uma divisão clara de responsabilidades estruturada nos padrões do **Domain-Driven Design (DDD)**:
 
-```
-com.fiap.bank.atm
-├── domain                          # Camada de Domínio (Regras de Negócio Puras)
-│   ├── exception                   # Exceções de negócio customizadas
-│   │   ├── AccountBlockedException.java
-│   │   ├── DailyLimitExceededException.java
-│   │   ├── InsufficientFundsException.java
-│   │   └── InvalidPinException.java
-│   ├── model                       # Entidades e Objetos de Valor (Value Objects)
-│   │   ├── Account.java            # Entidade Principal da Conta Bancária
-│   │   ├── BaseEntity.java         # Classe base com ID (UUID) e datas de criação/atualização
-│   │   ├── Money.java              # Value Object imutável para operações monetárias (BigDecimal)
-│   │   ├── Transaction.java        # Entidade de Registro de Transações
-│   │   └── TransactionType.java    # Enum dos tipos de transação (Saque, Depósito, Transferências)
-│   └── repository                  # Interfaces de Repositório
-│       └── AccountRepository.java
+```text
+fiap-bank-atm
+├── domain                              # Camada de Domínio (Regras de Negócio Puras)
+│   └── src/main/java/com/fiap/bank/atm/domain
+│       ├── exception                   # Exceções de negócio customizadas
+│       │   ├── AccountBlockedException.java
+│       │   ├── DailyLimitExceededException.java
+│       │   ├── InsufficientFundsException.java
+│       │   └── InvalidPinException.java
+│       ├── model                       # Entidades e Objetos de Valor
+│       │   ├── Account.java            # Entidade principal da conta bancária
+│       │   ├── BaseEntity.java         # Classe base genérica com UUID
+│       │   ├── Money.java              # Value Object para valores monetários
+│       │   ├── Transaction.java        # Entidade de transações bancárias
+│       │   └── TransactionType.java    # Tipos de transação
+│       └── repository                  # Contratos dos repositórios
+│           ├── ATMRepository.java      # Interface genérica
+│           └── AccountRepository.java  # Repositório específico de contas
 │
-├── application                     # Camada de Aplicação (Casos de Uso & Orquestração)
-│   └── service
-│       └── AtmService.java         # Orquestra autenticação, transações e estado da sessão
+├── application                         # Camada de Aplicação (Casos de Uso)
+│   └── src/main/java/com/fiap/bank/atm/application
+│       ├── dto                         # Objetos de transferência de dados
+│       │   ├── AccountInfoDTO.java
+│       │   └── TransactionDTO.java
+│       ├── exception                   # Exceções expostas para a apresentação
+│       │   ├── AccountBlockedApplicationException.java
+│       │   ├── DailyLimitExceededApplicationException.java
+│       │   ├── InsufficientFundsApplicationException.java
+│       │   └── InvalidPinApplicationException.java
+│       └── AtmService.java             # Orquestra os casos de uso
 │
-├── infrastructure                  # Camada de Infraestrutura (Persistência e Recursos Externos)
-│   └── persistence
-│       └── InMemoryAccountRepository.java # Implementação em memória com dados de teste (Seed)
+├── infrastructure                      # Camada de Infraestrutura (JDBC e SQLite)
+│   └── src/main/java/com/fiap/bank/atm
+│       ├── infrastructure
+│       │   ├── database                # Configuração e inicialização do banco
+│       │   │   ├── ConnectionFactory.java
+│       │   │   └── DatabaseInitializer.java
+│       │   └── persistence             # Implementações dos repositórios
+│       │       └── AccountRepositoryJdbcImpl.java
+│       └── AtmApplication.java         # Classe principal e injeção manual
 │
-└── presentation                    # Camada de Apresentação (UI / Swing)
-    ├── AtmFrame.java               # Janela principal do ATM com FlatLaf Dark Theme
-    ├── AtmFrame.form               # Arquivo de layout visual do Swing Form
-    └── ScreenState.java            # Enum da Máquina de Estados da Tela
+└── presentation                        # Camada de Apresentação (UI / Swing)
+    └── src/main/java/com/fiap/bank/atm/presentation
+        ├── AtmFrame.java               # Janela principal do ATM
+        ├── AtmFrame.form               # Layout visual do Swing
+        └── ScreenState.java            # Estados da interface
 ```
 
 ---
