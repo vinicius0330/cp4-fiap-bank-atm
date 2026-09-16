@@ -1,13 +1,25 @@
 package com.fiap.bank.atm.application;
 
+import com.fiap.bank.atm.application.dto.AccountInfoDTO;
+import com.fiap.bank.atm.application.dto.TransactionDTO;
+import com.fiap.bank.atm.application.exception.AccountBlockedApplicationException;
+import com.fiap.bank.atm.application.exception.DailyLimitExceededApplicationException;
+import com.fiap.bank.atm.application.exception.InsufficientFundsApplicationException;
+import com.fiap.bank.atm.application.exception.InvalidPinApplicationException;
+import com.fiap.bank.atm.domain.exception.AccountBlockedException;
+import com.fiap.bank.atm.domain.exception.DailyLimitExceededException;
+import com.fiap.bank.atm.domain.exception.InsufficientFundsException;
 import com.fiap.bank.atm.domain.exception.InvalidPinException;
 import com.fiap.bank.atm.domain.model.Account;
 import com.fiap.bank.atm.domain.model.Money;
 import com.fiap.bank.atm.domain.model.Transaction;
 import com.fiap.bank.atm.domain.repository.AccountRepository;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 public class AtmService {
+
     private final AccountRepository accountRepository;
     private Account currentAccount;
 
@@ -15,64 +27,133 @@ public class AtmService {
         this.accountRepository = accountRepository;
     }
 
-    public Account authenticate(String accountNumber, String pin) {
-        Account account = accountRepository.findByAccountNumber(accountNumber);
+    public AccountInfoDTO authenticate(String accountNumber, String pin) {
+        Account account =
+                accountRepository.findByAccountNumber(accountNumber);
 
         if (account == null) {
-            throw new InvalidPinException("Conta não encontrada.");
+            throw new InvalidPinApplicationException(
+                    "Conta não encontrada."
+            );
         }
 
         try {
             account.authenticate(pin);
             currentAccount = account;
-            return account;
-        } catch (RuntimeException e) {
-            accountRepository.save(account); // Save to persist failed attempts / blocked state
-            throw e;
+            accountRepository.save(account);
+
+            return toAccountInfoDTO(account);
+        } catch (AccountBlockedException exception) {
+            accountRepository.save(account);
+
+            throw new AccountBlockedApplicationException(
+                    exception.getMessage()
+            );
+        } catch (InvalidPinException exception) {
+            accountRepository.save(account);
+
+            throw new InvalidPinApplicationException(
+                    exception.getMessage()
+            );
         }
     }
 
-    public void withdraw(double amount) {
+    public void withdraw(BigDecimal amount) {
         ensureAuthenticated();
-        currentAccount.withdraw(Money.of(amount));
-        accountRepository.save(currentAccount);
+
+        try {
+            currentAccount.withdraw(Money.of(amount));
+            accountRepository.save(currentAccount);
+        } catch (AccountBlockedException exception) {
+            throw new AccountBlockedApplicationException(
+                    exception.getMessage()
+            );
+        } catch (InsufficientFundsException exception) {
+            throw new InsufficientFundsApplicationException(
+                    exception.getMessage()
+            );
+        } catch (DailyLimitExceededException exception) {
+            throw new DailyLimitExceededApplicationException(
+                    exception.getMessage()
+            );
+        }
     }
 
-    public void deposit(double amount) {
+    public void deposit(BigDecimal amount) {
         ensureAuthenticated();
-        currentAccount.deposit(Money.of(amount));
-        accountRepository.save(currentAccount);
+
+        try {
+            currentAccount.deposit(Money.of(amount));
+            accountRepository.save(currentAccount);
+        } catch (AccountBlockedException exception) {
+            throw new AccountBlockedApplicationException(
+                    exception.getMessage()
+            );
+        }
     }
 
-    public void transfer(String targetAccountNumber, double amount) {
+    public void transfer(
+            String targetAccountNumber,
+            BigDecimal amount
+    ) {
         ensureAuthenticated();
 
-        Account targetAccount = accountRepository.findByAccountNumber(targetAccountNumber);
+        Account targetAccount =
+                accountRepository.findByAccountNumber(
+                        targetAccountNumber
+                );
+
         if (targetAccount == null) {
-            throw new IllegalArgumentException("Conta de destino não encontrada.");
+            throw new IllegalArgumentException(
+                    "Conta de destino não encontrada."
+            );
         }
-        currentAccount.transfer(targetAccount, Money.of(amount));
 
-        accountRepository.save(currentAccount);
-        accountRepository.save(targetAccount);
+        try {
+            currentAccount.transfer(
+                    targetAccount,
+                    Money.of(amount)
+            );
+
+            accountRepository.save(currentAccount);
+            accountRepository.save(targetAccount);
+        } catch (AccountBlockedException exception) {
+            throw new AccountBlockedApplicationException(
+                    exception.getMessage()
+            );
+        } catch (InsufficientFundsException exception) {
+            throw new InsufficientFundsApplicationException(
+                    exception.getMessage()
+            );
+        }
     }
 
-    public Money getBalance() {
+    public BigDecimal getBalance() {
         ensureAuthenticated();
-        return currentAccount.getBalance();
+
+        return currentAccount
+                .getBalance()
+                .getAmount();
     }
 
-    public List<Transaction> getStatement() {
+    public AccountInfoDTO getCurrentAccountInfo() {
         ensureAuthenticated();
-        return currentAccount.getTransactions();
+
+        return toAccountInfoDTO(currentAccount);
+    }
+
+    public List<TransactionDTO> getStatement() {
+        ensureAuthenticated();
+
+        return currentAccount
+                .getTransactions()
+                .stream()
+                .map(this::toTransactionDTO)
+                .toList();
     }
 
     public void logout() {
         currentAccount = null;
-    }
-
-    public Account getCurrentAccount() {
-        return currentAccount;
     }
 
     public boolean isAuthenticated() {
@@ -81,7 +162,31 @@ public class AtmService {
 
     private void ensureAuthenticated() {
         if (!isAuthenticated()) {
-            throw new IllegalStateException("Nenhum usuário está autenticado no momento.");
+            throw new IllegalStateException(
+                    "Nenhum usuário está autenticado no momento."
+            );
         }
+    }
+
+    private AccountInfoDTO toAccountInfoDTO(Account account) {
+        return new AccountInfoDTO(
+                account.getAccountNumber(),
+                account.getBalance().getAmount(),
+                account.getDailyWithdrawalLimit().getAmount(),
+                account.getTotalWithdrawnToday().getAmount(),
+                account.isBlocked()
+        );
+    }
+
+    private TransactionDTO toTransactionDTO(
+            Transaction transaction
+    ) {
+        return new TransactionDTO(
+                transaction.getId(),
+                transaction.getTimestamp(),
+                transaction.getType().getDescription(),
+                transaction.getAmount().getAmount(),
+                transaction.getDescription()
+        );
     }
 }
